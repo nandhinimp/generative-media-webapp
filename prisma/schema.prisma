@@ -12,4 +12,5 @@ model Generation {
   prompt    String
   imageUrl  String
   createdAt DateTime @default(now())
+  deletedAt DateTime?
 }

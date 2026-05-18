@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { generateImage } from "@/lib/huggingface";
 import { prisma } from "@/lib/prisma";
+import { enhancePrompt, defaultNegativePrompt } from "@/utils/enhancePrompt";
+import { GenerationOptions } from "@/types/generation";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { prompt } = body;
+    const { prompt, options } = body as { prompt: string; options?: GenerationOptions };
 
     if (!prompt) {
       return NextResponse.json(
@@ -15,7 +17,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const imageUrl = await generateImage(prompt);
+    const enhancedPrompt = enhancePrompt(prompt, options);
+    const imageUrl = await generateImage(enhancedPrompt, defaultNegativePrompt, options);
 
     try {
       const generation = await prisma.generation.create({
