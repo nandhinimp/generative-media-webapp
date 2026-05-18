@@ -2,12 +2,22 @@ import { InferenceClient } from "@huggingface/inference";
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+import { GenerationOptions } from "@/types/generation";
+import { buildInferenceParameters } from "@/utils/generationConfig";
 
 const client = new InferenceClient(process.env.HF_TOKEN);
 
-export async function generateImage(prompt: string) {
+export async function generateImage(prompt: string, negativePrompt?: string, options?: GenerationOptions) {
   if (!process.env.HF_TOKEN) {
     throw new Error("HF_TOKEN is not configured in .env");
+  }
+
+  const parameters: Record<string, any> = {};
+  if (negativePrompt) {
+    parameters.negative_prompt = negativePrompt;
+  }
+  if (options) {
+    Object.assign(parameters, buildInferenceParameters(options));
   }
 
   const image = await client.textToImage(
@@ -15,6 +25,7 @@ export async function generateImage(prompt: string) {
       provider: "auto",
       model: "black-forest-labs/FLUX.1-schnell",
       inputs: prompt,
+      parameters: Object.keys(parameters).length > 0 ? parameters : undefined,
     },
     {
       outputType: "blob",

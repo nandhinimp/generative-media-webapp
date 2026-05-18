@@ -1,33 +1,20 @@
 import PromptForm from "@/components/PromptForm";
 
-export default function Home() {
+export default async function Home({ searchParams }: { searchParams?: Promise<{ prompt?: string }> }) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+
   return (
-    <main className="min-h-screen text-white py-4 sm:py-6">
-      <div className="container-xl w-full">
-        <section className="max-w-5xl mx-auto text-center pt-4 md:pt-6">
-          <h1 className="text-5xl md:text-6xl leading-tight font-extrabold gradient-text">
-            Create cinematic AI imagery —
-            <span className="block text-4xl md:text-5xl font-normal mt-2 text-zinc-300">fast, elegant, and precise</span>
-          </h1>
-
-          <p className="mt-6 text-zinc-400 text-lg max-w-2xl mx-auto">
-            Generate high-fidelity visuals with refined controls. Designed for creators who demand a premium, minimal interface that stays out of the way.
+    <main className="min-h-screen text-white py-6 sm:py-8">
+      <div className="mx-auto max-w-4xl px-4 sm:px-0 pb-6">
+        <div className="rounded-3xl border border-white/8 bg-white/3 px-5 py-4 glass">
+          <h1 className="text-2xl font-semibold text-zinc-100 sm:text-3xl">Generative Media Studio</h1>
+          <p className="mt-1 text-sm text-zinc-400 sm:text-base">
+            Create, tune, and review AI images from one clean workspace.
           </p>
-
-          <div className="mt-6 flex items-center justify-center gap-4">
-            <a className="btn-gradient text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:scale-[1.02] transition-transform" href="#">
-              Get Started — Generate
-            </a>
-            <a className="px-4 py-3 rounded-xl border border-white/6 text-sm muted" href="#">
-              Learn more
-            </a>
-          </div>
-        </section>
-
-        <section className="mt-10">
-          <PromptForm />
-        </section>
+        </div>
       </div>
+
+      <PromptForm initialPrompt={resolvedSearchParams?.prompt} />
     </main>
   );
 }
