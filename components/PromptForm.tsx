@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Generation, GenerationOptions } from "../types/generation";
+import { GenerationOptions } from "../types/generation";
 import { generateImage as serviceGenerateImage } from "../services/generation.service";
 import PromptInput from "./PromptInput";
 import GenerationSettings from "./GenerationSettings";

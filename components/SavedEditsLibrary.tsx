@@ -3,30 +3,27 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Generation } from "../types/generation";
-import { fetchGenerations, deleteGeneration as serviceDeleteGeneration } from "../services/generation.service";
+import { SavedEdit } from "../types/generation";
+import { deleteSavedEdit as serviceDeleteSavedEdit, fetchSavedEdits } from "../services/generation.service";
 import { downloadImage } from "../utils/downloadImage";
-import { loadFavorites, toggleFavoriteLocal } from "../utils/favorites";
 import GalleryGrid from "./GalleryGrid";
 import FullscreenModal from "./FullscreenModal";
 
 type Props = {
-  mode: "all" | "favorites";
   title: string;
   description: string;
 };
 
-export default function GenerationLibrary({ mode, title, description }: Props) {
-  const [generations, setGenerations] = useState<Generation[]>([]);
+export default function SavedEditsLibrary({ title, description }: Props) {
+  const [savedEdits, setSavedEdits] = useState<SavedEdit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [favorites, setFavorites] = useState<Record<number, boolean>>({});
-  const [fullscreen, setFullscreen] = useState<Generation | null>(null);
+  const [fullscreen, setFullscreen] = useState<SavedEdit | null>(null);
   const searchParams = useSearchParams();
 
   async function load() {
     try {
-      const data = await fetchGenerations();
-      setGenerations(data);
+      const data = await fetchSavedEdits();
+      setSavedEdits(data);
     } finally {
       setLoading(false);
     }
@@ -34,54 +31,39 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
 
   useEffect(() => {
     load();
-    try {
-      setFavorites(loadFavorites());
-    } catch {
-      setFavorites({});
-    }
   }, []);
 
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
-    if (!highlightId || generations.length === 0) return;
+    if (!highlightId || savedEdits.length === 0) return;
 
-    const found = generations.find((generation) => String(generation.id) === highlightId);
+    const found = savedEdits.find((savedEdit) => String(savedEdit.id) === highlightId);
     if (found) {
       setFullscreen(found);
     }
-  }, [generations, searchParams]);
+  }, [savedEdits, searchParams]);
 
-  const visibleGenerations = useMemo(() => {
-    if (mode === "favorites") {
-      return generations.filter((generation) => favorites[generation.id]);
-    }
-
-    return generations;
-  }, [favorites, generations, mode]);
-
-  function handleToggleFavorite(id: number) {
-    setFavorites(toggleFavoriteLocal(id));
-  }
+  const visibleSavedEdits = useMemo(() => savedEdits, [savedEdits]);
 
   async function handleDelete(id: number) {
-    if (!confirm('Delete this generation? This cannot be undone.')) return;
+    if (!confirm("Delete this saved edit? This cannot be undone.")) return;
 
-    const previousGenerations = generations;
+    const previousSavedEdits = savedEdits;
     const previousFullscreen = fullscreen;
     const wasFullscreenOpen = fullscreen?.id === id;
 
-    setGenerations((currentGenerations) => currentGenerations.filter((generation) => generation.id !== id));
+    setSavedEdits((current) => current.filter((savedEdit) => savedEdit.id !== id));
     if (wasFullscreenOpen) setFullscreen(null);
 
     try {
-      const deleted = await serviceDeleteGeneration(id);
+      const deleted = await serviceDeleteSavedEdit(id);
       if (!deleted) {
-        setGenerations(previousGenerations);
+        setSavedEdits(previousSavedEdits);
         if (wasFullscreenOpen) setFullscreen(previousFullscreen);
       }
     } catch (error) {
       console.error(error);
-      setGenerations(previousGenerations);
+      setSavedEdits(previousSavedEdits);
       if (wasFullscreenOpen) setFullscreen(previousFullscreen);
     }
   }
@@ -95,7 +77,7 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 sm:px-0 py-6">
+    <section className="mx-auto max-w-6xl px-4 py-6 sm:px-0 sm:py-6">
       <div className="mb-6 rounded-2xl border border-white/8 bg-white/3 p-5 glass">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -113,9 +95,6 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
             <Link href="/favorites" className="rounded-full border border-white/8 bg-white/5 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/10">
               Favorites
             </Link>
-            <Link href="/saved-edited-images" className="rounded-full border border-white/8 bg-white/5 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/10">
-              Saved Edits
-            </Link>
           </div>
         </div>
       </div>
@@ -129,26 +108,21 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
       ) : (
         <>
           <GalleryGrid
-            generations={visibleGenerations}
-            favorites={favorites}
-            onToggleFavorite={handleToggleFavorite}
+            generations={visibleSavedEdits}
+            favorites={{}}
+            onToggleFavorite={() => {}}
             onDelete={handleDelete}
             onDownload={handleDownload}
-            onOpenFullscreen={(generation) => setFullscreen(generation)}
-            onCreateVariation={(prompt) => {
-              if (typeof window !== "undefined") {
-                window.location.href = `/?prompt=${encodeURIComponent(prompt)}`;
-              }
-            }}
+            onOpenFullscreen={(savedEdit) => setFullscreen(savedEdit)}
           />
 
           <FullscreenModal
             generation={fullscreen}
             onClose={() => setFullscreen(null)}
             onDownload={handleDownload}
-            onToggleFavorite={handleToggleFavorite}
+            onToggleFavorite={() => {}}
             onDelete={handleDelete}
-            favorites={favorites}
+            favorites={{}}
           />
         </>
       )}
