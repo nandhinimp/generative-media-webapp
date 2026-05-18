@@ -22,3 +22,12 @@ export type Generation = {
   saved?: boolean;
   warning?: string;
 };
+
+export type SavedEdit = {
+  id: number;
+  sourceGenerationId: number;
+  prompt: string;
+  imageUrl: string;
+  createdAt: string;
+  deletedAt?: string | null;
+};

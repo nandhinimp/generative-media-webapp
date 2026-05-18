@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Generation } from "../types/generation";
 
 type Props = {
@@ -14,6 +15,8 @@ type Props = {
 
 export default function FullscreenModal({ generation, onClose, onDownload, onToggleFavorite, onDelete, favorites }: Props) {
   if (!generation) return null;
+
+  const editHref = `/editor/${generation.id}?image=${encodeURIComponent(generation.imageUrl)}&prompt=${encodeURIComponent(generation.prompt)}`;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 p-3 sm:p-4">
@@ -30,6 +33,12 @@ export default function FullscreenModal({ generation, onClose, onDownload, onTog
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l4-4m-4 4-4-4M21 21H3" />
             </svg>
           </button>
+
+          <Link href={editHref} onClick={() => {}} className="btn-icon !h-9 !w-9 !rounded-full border border-white/10 bg-white/5 hover:bg-white/10" title="Edit" aria-label="Edit">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-zinc-100">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.1 2.1 0 113 2.97L7.5 18.819 3 20l1.18-4.5L16.862 3.487z" />
+            </svg>
+          </Link>
 
           <button className="btn-icon !h-9 !w-9 !rounded-full border border-white/10 bg-white/5 hover:bg-white/10" onClick={() => onToggleFavorite(generation.id)} title="Favorite" aria-label="Favorite">
             {favorites[generation.id] ? (

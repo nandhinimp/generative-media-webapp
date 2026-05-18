@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Generation } from "../types/generation";
 
 type Props = {
@@ -14,6 +15,8 @@ type Props = {
 };
 
 export default function ImageCard({ generation, favorites, onToggleFavorite, onDelete, onDownload, onOpenFullscreen, onCreateVariation }: Props) {
+  const editHref = `/editor/${generation.id}?image=${encodeURIComponent(generation.imageUrl)}&prompt=${encodeURIComponent(generation.prompt)}`;
+
   return (
     <article className="group rounded-2xl overflow-hidden glass border border-white/6 shadow-lg transform transition-all duration-300 hover:scale-102 hover:shadow-2xl">
       <div className="relative overflow-hidden w-full h-80 sm:h-96 bg-black cursor-zoom-in" onClick={() => onOpenFullscreen(generation)}>
@@ -47,6 +50,18 @@ export default function ImageCard({ generation, favorites, onToggleFavorite, onD
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l4-4m-4 4-4-4M21 21H3" />
             </svg>
           </button>
+
+          <Link
+            href={editHref}
+            onClick={(event) => event.stopPropagation()}
+            className="btn-icon !h-9 !w-9 !rounded-full border border-white/10 bg-white/5 hover:bg-white/10"
+            title="Edit"
+            aria-label="Edit"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-zinc-100">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.1 2.1 0 113 2.97L7.5 18.819 3 20l1.18-4.5L16.862 3.487z" />
+            </svg>
+          </Link>
 
           <button
             onClick={(event) => { event.stopPropagation(); onCreateVariation?.(generation.prompt); }}

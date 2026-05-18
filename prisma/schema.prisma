@@ -14,3 +14,12 @@ model Generation {
   createdAt DateTime @default(now())
   deletedAt DateTime?
 }
+
+model SavedEdit {
+  id                Int      @id @default(autoincrement())
+  sourceGenerationId Int
+  prompt            String
+  imageUrl          String
+  createdAt         DateTime @default(now())
+  deletedAt         DateTime?
+}
