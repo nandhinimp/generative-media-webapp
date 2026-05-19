@@ -9,17 +9,27 @@ datasource db {
 
 model Generation {
   id        Int      @id @default(autoincrement())
+  userId    String
+  userName  String?
+  userImage String?
   prompt    String
   imageUrl  String
   createdAt DateTime @default(now())
   deletedAt DateTime?
+
+  @@index([userId, createdAt])
 }
 
 model SavedEdit {
   id                Int      @id @default(autoincrement())
+  userId            String
+  userName          String?
+  userImage         String?
   sourceGenerationId Int
   prompt            String
   imageUrl          String
   createdAt         DateTime @default(now())
   deletedAt         DateTime?
+
+  @@index([userId, createdAt])
 }

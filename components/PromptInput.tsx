@@ -8,9 +8,11 @@ type Props = {
   onGenerate: () => void;
   loading: boolean;
   error?: string;
+  disabled?: boolean;
+  helperText?: string;
 };
 
-export default function PromptInput({ prompt, setPrompt, onGenerate, loading, error }: Props) {
+export default function PromptInput({ prompt, setPrompt, onGenerate, loading, error, disabled, helperText }: Props) {
   return (
     <div className="w-full mt-6 md:mt-10">
       <div className="mx-auto max-w-4xl">
@@ -28,9 +30,13 @@ export default function PromptInput({ prompt, setPrompt, onGenerate, loading, er
               <p className="text-red-400 text-sm bg-red-400/8 p-2 rounded-lg border border-red-400/10 mr-auto">{error}</p>
             )}
 
+            {helperText && !error && (
+              <p className="text-sm text-zinc-400 mr-auto">{helperText}</p>
+            )}
+
             <button
               onClick={onGenerate}
-              disabled={loading || !prompt.trim()}
+              disabled={loading || disabled || !prompt.trim()}
               className="btn-gradient text-white px-6 py-3 rounded-xl font-semibold disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
             >
               {loading ? (
@@ -42,7 +48,7 @@ export default function PromptInput({ prompt, setPrompt, onGenerate, loading, er
                   Generating...
                 </>
               ) : (
-                "Generate"
+                disabled ? "Sign in to generate" : "Generate"
               )}
             </button>
           </div>

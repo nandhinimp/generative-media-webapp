@@ -16,7 +16,7 @@ export function buildInferenceParameters(options: GenerationOptions) {
   const { width, height } = getDimensions(options.aspectRatio);
   
   // Custom HuggingFace API parameters mapping
-  const parameters: Record<string, any> = {
+  const parameters: Record<string, string | number> = {
     width,
     height,
   };

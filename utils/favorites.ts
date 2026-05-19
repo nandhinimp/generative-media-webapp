@@ -1,26 +1,28 @@
-import { Generation } from "../types/generation";
+const KEY_PREFIX = "favorites";
 
-const KEY = 'favorites';
+function getKey(userId?: string | null) {
+  return userId ? `${KEY_PREFIX}:${userId}` : `${KEY_PREFIX}:guest`;
+}
 
-export function loadFavorites(): Record<number, boolean> {
+export function loadFavorites(userId?: string | null): Record<number, boolean> {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(getKey(userId));
     if (!raw) return {};
     return JSON.parse(raw);
-  } catch (e) {
+  } catch {
     return {};
   }
 }
 
-export function saveFavorites(obj: Record<number, boolean>) {
+export function saveFavorites(obj: Record<number, boolean>, userId?: string | null) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(obj));
-  } catch (e) {}
+    localStorage.setItem(getKey(userId), JSON.stringify(obj));
+  } catch {}
 }
 
-export function toggleFavoriteLocal(id: number): Record<number, boolean> {
-  const favs = loadFavorites();
+export function toggleFavoriteLocal(id: number, userId?: string | null): Record<number, boolean> {
+  const favs = loadFavorites(userId);
   const next = { ...favs, [id]: !favs[id] };
-  saveFavorites(next);
+  saveFavorites(next, userId);
   return next;
 }

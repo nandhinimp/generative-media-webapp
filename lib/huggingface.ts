@@ -12,7 +12,7 @@ export async function generateImage(prompt: string, negativePrompt?: string, opt
     throw new Error("HF_TOKEN is not configured in .env");
   }
 
-  const parameters: Record<string, any> = {};
+  const parameters: Record<string, string | number> = {};
   if (negativePrompt) {
     parameters.negative_prompt = negativePrompt;
   }

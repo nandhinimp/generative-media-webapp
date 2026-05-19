@@ -3,7 +3,6 @@
 import React from "react";
 import {
   AspectRatio,
-  CreativityLevel,
   GenerationOptions,
   PromptStrictness,
   StylePreset,

@@ -6,8 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { SavedEdit } from "../types/generation";
 import { deleteSavedEdit as serviceDeleteSavedEdit, fetchSavedEdits } from "../services/generation.service";
 import { downloadImage } from "../utils/downloadImage";
+import { getRememberedWorkspaceUserId, loadCachedSavedEdits, rememberWorkspaceUserId, saveCachedSavedEdits } from "../utils/workspaceCache";
 import GalleryGrid from "./GalleryGrid";
 import FullscreenModal from "./FullscreenModal";
+import { useAuth } from "@/hooks/useAuth";
+import AuthPrompt from "./AuthPrompt";
 
 type Props = {
   title: string;
@@ -15,33 +18,55 @@ type Props = {
 };
 
 export default function SavedEditsLibrary({ title, description }: Props) {
+  const { user, loading: authLoading } = useAuth();
   const [savedEdits, setSavedEdits] = useState<SavedEdit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fullscreen, setFullscreen] = useState<SavedEdit | null>(null);
+  const [selectedFullscreen, setSelectedFullscreen] = useState<SavedEdit | null>(null);
+  const [cachedUserId, setCachedUserId] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
-  async function load() {
-    try {
-      const data = await fetchSavedEdits();
-      setSavedEdits(data);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  useEffect(() => {
+  const highlightedSavedEdit = useMemo(() => {
     const highlightId = searchParams.get("highlight");
-    if (!highlightId || savedEdits.length === 0) return;
+    if (!highlightId) return null;
 
-    const found = savedEdits.find((savedEdit) => String(savedEdit.id) === highlightId);
-    if (found) {
-      setFullscreen(found);
-    }
+    return savedEdits.find((savedEdit) => String(savedEdit.id) === highlightId) ?? null;
   }, [savedEdits, searchParams]);
+
+  const fullscreen = selectedFullscreen ?? highlightedSavedEdit;
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    const initialize = async () => {
+      if (!user) {
+        const rememberedUserId = getRememberedWorkspaceUserId();
+        if (rememberedUserId) {
+          setCachedUserId(rememberedUserId);
+          setSavedEdits(loadCachedSavedEdits(rememberedUserId));
+        } else {
+          setCachedUserId(null);
+          setSavedEdits([]);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const data = await fetchSavedEdits();
+        setSavedEdits(data);
+        setCachedUserId(user.uid);
+        rememberWorkspaceUserId(user.uid);
+        saveCachedSavedEdits(user.uid, data);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void initialize();
+  }, [authLoading, user]);
 
   const visibleSavedEdits = useMemo(() => savedEdits, [savedEdits]);
 
@@ -53,26 +78,40 @@ export default function SavedEditsLibrary({ title, description }: Props) {
     const wasFullscreenOpen = fullscreen?.id === id;
 
     setSavedEdits((current) => current.filter((savedEdit) => savedEdit.id !== id));
-    if (wasFullscreenOpen) setFullscreen(null);
+    if (wasFullscreenOpen) setSelectedFullscreen(null);
 
     try {
       const deleted = await serviceDeleteSavedEdit(id);
       if (!deleted) {
         setSavedEdits(previousSavedEdits);
-        if (wasFullscreenOpen) setFullscreen(previousFullscreen);
+        if (wasFullscreenOpen) setSelectedFullscreen(previousFullscreen);
+      } else if (user?.uid) {
+        saveCachedSavedEdits(user.uid, previousSavedEdits.filter((savedEdit) => savedEdit.id !== id));
       }
     } catch (error) {
       console.error(error);
       setSavedEdits(previousSavedEdits);
-      if (wasFullscreenOpen) setFullscreen(previousFullscreen);
+      if (wasFullscreenOpen) setSelectedFullscreen(previousFullscreen);
     }
   }
+
+  const showCachedWorkspace = !user && cachedUserId && savedEdits.length > 0;
 
   async function handleDownload(url: string, filename?: string) {
     try {
       await downloadImage(url, filename);
     } catch (error) {
       console.error("Download failed", error);
+    }
+  }
+
+  function handleCloseFullscreen() {
+    setSelectedFullscreen(null);
+
+    if (typeof window !== "undefined" && searchParams.get("highlight")) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("highlight");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     }
   }
 
@@ -99,7 +138,12 @@ export default function SavedEditsLibrary({ title, description }: Props) {
         </div>
       </div>
 
-      {loading ? (
+      {!authLoading && !user && !showCachedWorkspace ? (
+        <AuthPrompt
+          title="Saved edits are private"
+          description="Sign in to view the edited images created in your workspace."
+        />
+      ) : loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="h-96 animate-pulse rounded-2xl border border-white/6 bg-white/5" />
@@ -107,18 +151,24 @@ export default function SavedEditsLibrary({ title, description }: Props) {
         </div>
       ) : (
         <>
+          {showCachedWorkspace && (
+            <div className="mb-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-50">
+              Showing the last synced saved edits from this device. Sign in again to refresh them from your account.
+            </div>
+          )}
+
           <GalleryGrid
             generations={visibleSavedEdits}
             favorites={{}}
             onToggleFavorite={() => {}}
             onDelete={handleDelete}
             onDownload={handleDownload}
-            onOpenFullscreen={(savedEdit) => setFullscreen(savedEdit)}
+            onOpenFullscreen={(savedEdit) => setSelectedFullscreen(savedEdit as SavedEdit)}
           />
 
           <FullscreenModal
             generation={fullscreen}
-            onClose={() => setFullscreen(null)}
+            onClose={handleCloseFullscreen}
             onDownload={handleDownload}
             onToggleFavorite={() => {}}
             onDelete={handleDelete}
