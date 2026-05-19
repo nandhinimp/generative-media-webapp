@@ -79,7 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: unknown) {
-      console.error("Login failed:", err);
+      // Only log if not a user cancellation
+      const code = (err as { code?: string })?.code;
+      if (code !== "auth/popup-closed-by-user") {
+        console.error("Login failed:", err);
+      }
       setError(toAuthMessage(err));
     } finally {
       setLoading(false);
