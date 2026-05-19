@@ -8,9 +8,27 @@ export async function fetchGenerations(): Promise<Generation[]> {
 }
 
 export async function generateImage(prompt: string, options: GenerationOptions): Promise<Generation | { imageUrl?: string; error?: string }> {
+  // Attach authenticated user info (if available) to the request body
+  // `fetchJsonWithAuth` will add the Authorization header using Firebase id token
+  let currentUser: any = null;
+  try {
+    // dynamic import to avoid SSR reference errors
+    const fb = await import('@/lib/firebase');
+    currentUser = fb.auth?.currentUser ?? null;
+  } catch (e) {
+    // ignore
+  }
+
+  const body: any = { prompt, options };
+  if (currentUser) {
+    body.userId = currentUser.uid;
+    body.userName = currentUser.displayName ?? null;
+    body.userImage = currentUser.photoURL ?? null;
+  }
+
   const res = await fetchJsonWithAuth('/api/generate', {
     method: 'POST',
-    body: JSON.stringify({ prompt, options }),
+    body: JSON.stringify(body),
   });
 
   const data = await res.json();
