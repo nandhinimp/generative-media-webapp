@@ -3,9 +3,16 @@ import { generateImage } from "@/lib/huggingface";
 import { prisma } from "@/lib/prisma";
 import { enhancePrompt, defaultNegativePrompt } from "@/utils/enhancePrompt";
 import { GenerationOptions } from "@/types/generation";
+import { createGeneration as createDevGeneration } from "@/lib/devStore";
+import { getFirebaseRequestUser } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
+    const user = await getFirebaseRequestUser(req);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const body = await req.json();
 
     const { prompt, options } = body as { prompt: string; options?: GenerationOptions };
@@ -25,6 +32,9 @@ export async function POST(req: Request) {
         data: {
           prompt,
           imageUrl,
+          userId: user.uid,
+          userName: user.name,
+          userImage: user.image,
         },
       });
 
@@ -34,12 +44,10 @@ export async function POST(req: Request) {
       });
     } catch (dbError) {
       console.error("Failed to save generation:", dbError);
+      const generation = createDevGeneration(prompt, imageUrl, user);
 
       return NextResponse.json({
-        id: null,
-        prompt,
-        imageUrl,
-        createdAt: new Date().toISOString(),
+        ...generation,
         saved: false,
         warning: "Image generated, but it could not be saved to the database.",
       });

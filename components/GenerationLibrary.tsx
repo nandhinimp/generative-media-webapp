@@ -7,8 +7,11 @@ import { Generation } from "../types/generation";
 import { fetchGenerations, deleteGeneration as serviceDeleteGeneration } from "../services/generation.service";
 import { downloadImage } from "../utils/downloadImage";
 import { loadFavorites, toggleFavoriteLocal } from "../utils/favorites";
+import { getRememberedWorkspaceUserId, loadCachedGenerations, rememberWorkspaceUserId, saveCachedGenerations } from "../utils/workspaceCache";
 import GalleryGrid from "./GalleryGrid";
 import FullscreenModal from "./FullscreenModal";
+import { useAuth } from "@/hooks/useAuth";
+import AuthPrompt from "./AuthPrompt";
 
 type Props = {
   mode: "all" | "favorites";
@@ -17,39 +20,59 @@ type Props = {
 };
 
 export default function GenerationLibrary({ mode, title, description }: Props) {
+  const { user, loading: authLoading } = useAuth();
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<Record<number, boolean>>({});
-  const [fullscreen, setFullscreen] = useState<Generation | null>(null);
+  const [selectedFullscreen, setSelectedFullscreen] = useState<Generation | null>(null);
+  const [cachedUserId, setCachedUserId] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
-  async function load() {
-    try {
-      const data = await fetchGenerations();
-      setGenerations(data);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    try {
-      setFavorites(loadFavorites());
-    } catch {
-      setFavorites({});
-    }
-  }, []);
-
-  useEffect(() => {
+  const highlightedGeneration = useMemo(() => {
     const highlightId = searchParams.get("highlight");
-    if (!highlightId || generations.length === 0) return;
+    if (!highlightId) return null;
 
-    const found = generations.find((generation) => String(generation.id) === highlightId);
-    if (found) {
-      setFullscreen(found);
-    }
+    return generations.find((generation) => String(generation.id) === highlightId) ?? null;
   }, [generations, searchParams]);
+
+  const fullscreen = selectedFullscreen ?? highlightedGeneration;
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    const initialize = async () => {
+      if (!user) {
+        const rememberedUserId = getRememberedWorkspaceUserId();
+        if (rememberedUserId) {
+          setCachedUserId(rememberedUserId);
+          setGenerations(loadCachedGenerations(rememberedUserId));
+          setFavorites(loadFavorites(rememberedUserId));
+        } else {
+          setCachedUserId(null);
+          setGenerations([]);
+          setFavorites({});
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const data = await fetchGenerations();
+        setGenerations(data);
+        setFavorites(loadFavorites(user.uid));
+        setCachedUserId(user.uid);
+        rememberWorkspaceUserId(user.uid);
+        saveCachedGenerations(user.uid, data);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void initialize();
+  }, [authLoading, user]);
 
   const visibleGenerations = useMemo(() => {
     if (mode === "favorites") {
@@ -60,7 +83,17 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
   }, [favorites, generations, mode]);
 
   function handleToggleFavorite(id: number) {
-    setFavorites(toggleFavoriteLocal(id));
+    setFavorites(toggleFavoriteLocal(id, user?.uid));
+  }
+
+  function handleCloseFullscreen() {
+    setSelectedFullscreen(null);
+
+    if (typeof window !== "undefined" && searchParams.get("highlight")) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("highlight");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    }
   }
 
   async function handleDelete(id: number) {
@@ -71,18 +104,20 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
     const wasFullscreenOpen = fullscreen?.id === id;
 
     setGenerations((currentGenerations) => currentGenerations.filter((generation) => generation.id !== id));
-    if (wasFullscreenOpen) setFullscreen(null);
+    if (wasFullscreenOpen) setSelectedFullscreen(null);
 
     try {
       const deleted = await serviceDeleteGeneration(id);
       if (!deleted) {
         setGenerations(previousGenerations);
-        if (wasFullscreenOpen) setFullscreen(previousFullscreen);
+        if (wasFullscreenOpen) setSelectedFullscreen(previousFullscreen);
+      } else if (user?.uid) {
+        saveCachedGenerations(user.uid, previousGenerations.filter((generation) => generation.id !== id));
       }
     } catch (error) {
       console.error(error);
       setGenerations(previousGenerations);
-      if (wasFullscreenOpen) setFullscreen(previousFullscreen);
+      if (wasFullscreenOpen) setSelectedFullscreen(previousFullscreen);
     }
   }
 
@@ -93,6 +128,8 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
       console.error("Download failed", error);
     }
   }
+
+  const showCachedWorkspace = !user && cachedUserId && generations.length > 0;
 
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-0 py-6">
@@ -120,7 +157,12 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
         </div>
       </div>
 
-      {loading ? (
+      {!authLoading && !user && !showCachedWorkspace ? (
+        <AuthPrompt
+          title="Your library is private"
+          description="Sign in with Google to view your own generations, favorites, and editing history."
+        />
+      ) : loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="h-96 animate-pulse rounded-2xl border border-white/6 bg-white/5" />
@@ -128,13 +170,19 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
         </div>
       ) : (
         <>
+          {showCachedWorkspace && (
+            <div className="mb-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-50">
+              Showing the last synced workspace from this device. Sign in again to refresh it from your account.
+            </div>
+          )}
+
           <GalleryGrid
             generations={visibleGenerations}
             favorites={favorites}
             onToggleFavorite={handleToggleFavorite}
             onDelete={handleDelete}
             onDownload={handleDownload}
-            onOpenFullscreen={(generation) => setFullscreen(generation)}
+            onOpenFullscreen={(generation) => setSelectedFullscreen(generation)}
             onCreateVariation={(prompt) => {
               if (typeof window !== "undefined") {
                 window.location.href = `/?prompt=${encodeURIComponent(prompt)}`;
@@ -144,7 +192,7 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
 
           <FullscreenModal
             generation={fullscreen}
-            onClose={() => setFullscreen(null)}
+            onClose={handleCloseFullscreen}
             onDownload={handleDownload}
             onToggleFavorite={handleToggleFavorite}
             onDelete={handleDelete}

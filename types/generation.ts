@@ -19,6 +19,9 @@ export type Generation = {
   imageUrl: string;
   createdAt: string;
   deletedAt?: string | null;
+  userId?: string | null;
+  userName?: string | null;
+  userImage?: string | null;
   saved?: boolean;
   warning?: string;
 };
@@ -30,4 +33,7 @@ export type SavedEdit = {
   imageUrl: string;
   createdAt: string;
   deletedAt?: string | null;
+  userId?: string | null;
+  userName?: string | null;
+  userImage?: string | null;
 };

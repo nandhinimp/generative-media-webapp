@@ -11,6 +11,8 @@ import ImageControls from "./ImageControls";
 import { EditorCanvasSize, EditorImageTransform, EditorMode, EditorTextItem } from "@/types/editor";
 import { downloadStageAsPng, exportStageAsPngDataUrl } from "@/utils/editorExport";
 import { saveEditedImage } from "@/services/generation.service";
+import { useAuth } from "@/hooks/useAuth";
+import AuthPrompt from "../AuthPrompt";
 
 type Props = {
   imageId: string;
@@ -39,6 +41,7 @@ const defaultImageTransform: EditorImageTransform = {
 export default function ImageEditorStudio({ imageId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const stageRef = useRef<Konva.Stage | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -144,6 +147,17 @@ export default function ImageEditorStudio({ imageId }: Props) {
   function handleSelectMode(mode: EditorMode, textId?: string) {
     setSelectedMode(mode);
     setSelectedTextId(mode === "text" ? textId ?? null : null);
+  }
+
+  if (!authLoading && !user) {
+    return (
+      <section className="mx-auto flex min-h-[calc(100vh-1rem)] max-w-5xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
+        <AuthPrompt
+          title="Sign in to edit images"
+          description="Editing, saving, and downloading are available after Google sign-in."
+        />
+      </section>
+    );
   }
 
   return (

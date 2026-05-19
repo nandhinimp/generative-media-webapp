@@ -37,8 +37,8 @@ export default function CanvasEditor({
 
   useEffect(() => {
     if (!imageUrl) {
-      setLoadedImage(null);
-      return;
+      const clearHandle = window.setTimeout(() => setLoadedImage(null), 0);
+      return () => window.clearTimeout(clearHandle);
     }
 
     const img = new window.Image();
