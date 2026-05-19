@@ -11,6 +11,7 @@ import GalleryGrid from "./GalleryGrid";
 import FullscreenModal from "./FullscreenModal";
 import { useAuth } from "@/hooks/useAuth";
 import AuthPrompt from "./AuthPrompt";
+import { LoadingGallery } from "./LoadingSkeletons";
 
 type Props = {
   title: string;
@@ -144,10 +145,8 @@ export default function SavedEditsLibrary({ title, description }: Props) {
           description="Sign in to view the edited images created in your workspace."
         />
       ) : loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-96 animate-pulse rounded-2xl border border-white/6 bg-white/5" />
-          ))}
+        <LoadingGallery />
+      ) : (
         </div>
       ) : (
         <>
