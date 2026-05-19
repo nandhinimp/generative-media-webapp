@@ -12,6 +12,7 @@ import GalleryGrid from "./GalleryGrid";
 import FullscreenModal from "./FullscreenModal";
 import { useAuth } from "@/hooks/useAuth";
 import AuthPrompt from "./AuthPrompt";
+import { LoadingGallery } from "./LoadingSkeletons";
 
 type Props = {
   mode: "all" | "favorites";
@@ -163,11 +164,7 @@ export default function GenerationLibrary({ mode, title, description }: Props) {
           description="Sign in with Google to view your own generations, favorites, and editing history."
         />
       ) : loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-96 animate-pulse rounded-2xl border border-white/6 bg-white/5" />
-          ))}
-        </div>
+        <LoadingGallery />
       ) : (
         <>
           {showCachedWorkspace && (
